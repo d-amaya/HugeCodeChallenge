@@ -89,7 +89,7 @@ public class DrawingCommandExecution {
 		}
 		return command;
 	}
-	
+	 
 	private static void finishProgramExecution() {
 		System.exit(0);
 	}
