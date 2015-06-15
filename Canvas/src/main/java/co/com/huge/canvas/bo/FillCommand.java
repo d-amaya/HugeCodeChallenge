@@ -1,6 +1,7 @@
 package co.com.huge.canvas.bo;
 
-import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Matcher;
 
 import co.com.huge.canvas.board.DrawingBoard;
@@ -10,6 +11,7 @@ import co.com.huge.canvas.factory.constant.FactoryConstants.TypeWritingPaintingC
 
 public class FillCommand extends DrawingCommand {
 
+	private Set<String> positions = new HashSet<String>();
 	private String command = null;
 	private int x = 0;
 	private int y = 0;
@@ -62,77 +64,29 @@ public class FillCommand extends DrawingCommand {
 	
 	@Override
 	public void draw(DrawingBoard drawingBoard) throws DrawingBoardException {
-		Collection<DrawingCommand> rectangleCommands = drawingBoard.getRectangleCommandsExecuted();
-		DrawingCommand drawingCommand = identifyRectangleForGivenCoordinates(rectangleCommands);
-		if (drawingCommand != null) {
-			fillRectangleAreaWithColour(drawingBoard, drawingCommand, colour);
-		} else {
-			fillCanvasWithoutRectangle(drawingBoard, rectangleCommands);
+		identifyPositions(x, y, drawingBoard);
+		for (String position : positions) {
+			int r = Integer.parseInt(position.split(BoardConstants.CHARACTER_EMPTY)[0]);
+			int c = Integer.parseInt(position.split(BoardConstants.CHARACTER_EMPTY)[1]);
+			drawingBoard.setValue(r, c, colour, getTypeWritingOnPaintingArea());
+		}
+	}
+	
+	private void identifyPositions(int x, int y, DrawingBoard drawingBoard) {
+		String position = String.valueOf(y).concat(BoardConstants.CHARACTER_EMPTY).concat(String.valueOf(x));
+		if (x > 0 && y > 0 && x <= drawingBoard.getNumberColumnsPaintingArea() && y <= drawingBoard.getNumberRowsPaintingArea()) {
+			if (!positions.contains(position) && (BoardConstants.CHARACTER_EMPTY.equals(drawingBoard.getValue(y, x)) || (!BoardConstants.CHARACTER_LINE_RECTANGLE.equals(drawingBoard.getValue(y, x))))) {
+				positions.add(position);
+				identifyPositions(x, y-1, drawingBoard);
+				identifyPositions(x, y+1, drawingBoard);
+				identifyPositions(x+1, y, drawingBoard);
+				identifyPositions(x-1, y, drawingBoard);
+			}
 		}
 	}
 	
 	@Override
 	public TypeWritingPaintingCommand getTypeWritingOnPaintingArea() {
-		return TypeWritingPaintingCommand.TYPE_WRITING_TOTAL_AREA;
+		return TypeWritingPaintingCommand.TYPE_WRITING_PAINTING_AREA;
 	}
-	
-	private DrawingCommand identifyRectangleForGivenCoordinates(Collection<DrawingCommand> rectangleCommands) {
-		for (DrawingCommand rectangleCommand : rectangleCommands) {
-			if (isCoordinateWithinRectangleArea(rectangleCommand)) {
-				return rectangleCommand;
-			}
-		}
-		return null;
-	}
-	
-	private boolean isCoordinateWithinRectangleArea(DrawingCommand drawingCommand) {
-		RectangleCommand rectangleCommand = (RectangleCommand) drawingCommand;
-		return x >= rectangleCommand.getX1() && x <= rectangleCommand.getX2() && y >= rectangleCommand.getY1() && y <= rectangleCommand.getY2();
-	}
-	
-	private void fillCanvasAreaWithColour(DrawingBoard drawingBoard, DrawingCommand drawingCommand) throws DrawingBoardException {
-		CanvasCommand canvasCommand = (CanvasCommand) drawingCommand; 
-		for (int r = 1; r <= canvasCommand.getHeight(); r++) {
-			for (int c = 1; c <= canvasCommand.getWidth(); c++) {
-				String value = drawingBoard.getValue(r, c);
-				if (BoardConstants.CHARACTER_EMPTY.equals(value)) {
-					drawingBoard.setValue(r, c, colour, getTypeWritingOnPaintingArea());
-				}
-			}
-		}
-	}
-	
-	private void fillCanvasWithoutRectangle(DrawingBoard drawingBoard, Collection<DrawingCommand> rectangleCommands) throws DrawingBoardException {
-		for (DrawingCommand rectangleCommand : rectangleCommands) {
-			fillRectangleAreaWithColour(drawingBoard, rectangleCommand, "%");
-		}
-		fillCanvasAreaWithColour(drawingBoard, drawingBoard.getCanvasCommandExecuted());
-		for (DrawingCommand rectangleCommand : rectangleCommands) {
-			resetBonusCharacterWithinRectangle(drawingBoard, rectangleCommand);
-		}
-	}
-	
-	private void resetBonusCharacterWithinRectangle(DrawingBoard drawingBoard, DrawingCommand drawingCommand) throws DrawingBoardException  {
-		RectangleCommand rectangleCommand = (RectangleCommand) drawingCommand;
-		for (int r = (rectangleCommand.getY1() + 1); r < rectangleCommand.getY2(); r++) {
-			for (int c = (rectangleCommand.getX1() + 1); c < rectangleCommand.getX2(); c++) {
-				if (BoardConstants.BONUS_FILL.equals(drawingBoard.getValue(r, c))) {
-					drawingBoard.setValue(r, c, BoardConstants.CHARACTER_EMPTY, getTypeWritingOnPaintingArea());
-				}
-			}
-		}
-	}
-	
-	private void fillRectangleAreaWithColour(DrawingBoard drawingBoard, DrawingCommand drawingCommand, String colour) throws DrawingBoardException {
-		RectangleCommand rectangleCommand = (RectangleCommand) drawingCommand;
-		for (int r = (rectangleCommand.getY1() + 1); r < rectangleCommand.getY2(); r++) {
-			for (int c = (rectangleCommand.getX1() + 1); c < rectangleCommand.getX2(); c++) {
-				if (!BoardConstants.BONUS_FILL.equals(colour) || BoardConstants.CHARACTER_EMPTY.equals(drawingBoard.getValue(r, c))
-						|| (BoardConstants.CHARACTER_EMPTY.equals(colour) && BoardConstants.BONUS_FILL.equals(drawingBoard.getValue(r, c)))) {
-					drawingBoard.setValue(r, c, colour, getTypeWritingOnPaintingArea());
-				}
-			}
-		}
-	}
-	
 }
